@@ -21,9 +21,8 @@ Thumbs.db
 # Logs
 *.log
 
-# Results and figures
+# Data
 results/data/
-results/figures/
 
 # LaTeX auxiliary files
 *.aux
