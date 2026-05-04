@@ -18,7 +18,7 @@ The project compares three approaches:
 
 * Forward Euler (explicit finite difference)
 * Backward Euler (implicit finite difference)
-* A neural network trained to learn the time-stepping operator (u^n \rightarrow u^{n+1})
+* A neural network trained to learn the time-stepping operator $(u^n \rightarrow u^{n+1})$
 
 The goal is to study:
 
