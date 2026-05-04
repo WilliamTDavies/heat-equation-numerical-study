@@ -1,0 +1,111 @@
+\documentclass[11pt]{article}
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{float}
+\usepackage{amssymb}
+
+\setstretch{0.97}
+\geometry{margin=1in}
+
+\title{Numerical Study of the 1D Heat Equation}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Problem Setup}
+
+We consider the one-dimensional heat equation
+\[
+u_t = \alpha u_{xx}, \quad x \in [0,1],
+\]
+with homogeneous Dirichlet boundary conditions
+\[
+u(0,t)=u(1,t)=0
+\]
+and initial condition
+\[
+u(x,0)=\sin(\pi x).
+\]
+
+The exact solution for this initial condition is
+\[
+u(x,t)=e^{-\alpha \pi^2 t}\sin(\pi x).
+\]
+
+Unless otherwise stated, we use $\alpha = 1$ and a uniform spatial grid with $N_x = 101$ points. Spatial derivatives are approximated using second-order central finite differences. The exact solution is used for error computation and validation.
+
+We compare three approaches:
+\begin{itemize}
+    \item Forward Euler (explicit finite difference scheme)
+    \item Backward Euler (implicit finite difference scheme)
+    \item A neural network trained to learn the one-step map $u^n \mapsto u^{n+1}$
+\end{itemize}
+
+Backward Euler is used as a stable reference numerical solver for generating training data due to its unconditional stability for diffusion equations. Training data are generated using a small time step $\Delta t = 10^{-5}$ to reduce temporal discretisation error and produce a stable reference trajectory.
+
+The neural network is a fully connected feedforward model with two hidden layers and Tanh activations. It takes the full spatial state $u^n \in \mathbb{R}^{N_x}$ as input and outputs the next time step $u^{n+1}$. It is trained in a supervised manner on consecutive pairs $(u^n, u^{n+1})$ from the Backward Euler simulation and evaluated autoregressively over multiple time steps.
+
+\section{Error Evolution in Time}
+
+Figure~\ref{fig:error_time} shows the $L^2$ error over time for the three methods.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{error_vs_time.png}
+    \caption{Time evolution of $L^2$ error for Forward Euler, Backward Euler, and the neural network.}
+    \label{fig:error_time}
+\end{figure}
+
+For the time step $\Delta t = 10^{-5}$, both Forward Euler and Backward Euler remain close to the exact solution, with small errors over the simulated time interval. On a logarithmic scale, the error curves exhibit approximately linear behaviour over parts of the trajectory, consistent with exponential growth of error.
+
+The neural network exhibits larger error and a non-monotone error profile under autoregressive rollout. This indicates that accurate one-step prediction does not necessarily imply stable long-horizon dynamics.
+
+\section{Stability with Respect to Time Step}
+
+Figure~\ref{fig:stability_dt} shows the dependence of the final $L^2$ error on the time step size $\Delta t$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{stability_vs_dt.png}
+    \caption{Final $L^2$ error as a function of time step size.}
+    \label{fig:stability_dt}
+\end{figure}
+
+Forward Euler is conditionally stable. Defining
+\[
+r = \frac{\alpha \Delta t}{\Delta x^2},
+\]
+the method is stable only when $r \le \frac{1}{2}$; when this condition is violated, high-frequency modes are amplified and the solution diverges.
+
+For $N_x = 101$, we have $\Delta x = 0.01$, giving a stability threshold $\Delta t \approx 5 \times 10^{-5}$, consistent with the observed onset of instability.
+
+Backward Euler remains stable across all tested time steps, consistent with unconditional stability. Its error depends on $\Delta t$, but no numerical blow-up occurs.
+
+\section{Neural Network Dynamics}
+
+Figure~\ref{fig:nn_operator} compares the neural network rollout against the Backward Euler trajectory.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{nn_operator_match.png}
+    \caption{Deviation of neural network rollout from the Backward Euler solution over time.}
+    \label{fig:nn_operator}
+\end{figure}
+
+The neural network is trained to approximate the discrete evolution operator mapping $u^n \mapsto u^{n+1}$. It achieves accurate one-step predictions but deviates from the reference solution under autoregressive rollout. As the model is iterated, discrepancies between the learned and true operators accumulate, producing a log-error evolution that is not strictly linear in time and exhibits a transient regime before settling into a more regular growth pattern. The origin of this behaviour is not fully resolved in this work. In contrast to Backward Euler, which strongly damps diffusion modes, the learned operator does not enforce a comparable dissipative structure, leading to systematic differences in long-time behaviour despite accurate local accuracy.
+
+\section{Conclusion}
+
+These results highlight the stability properties of standard finite difference schemes for the heat equation and the contrasting behaviour of learned time-stepping models.
+
+Forward Euler is conditionally stable. Instability occurs when the CFL condition, $r = \frac{\alpha \Delta t}{\Delta x^2} \le \frac{1}{2}$, is violated, leading to rapid growth of numerical errors. When stable, the method can accurately track the exact solution, but it fails abruptly beyond the stability threshold. Backward Euler is unconditionally stable for this problem and does not exhibit numerical blow-up for any tested time step. However, as $\Delta t$ increases, the method becomes increasingly diffusive, smoothing the solution and reducing accuracy. The neural network is able to approximate the one-step evolution map when trained on stable data, but does not inherit the stability properties of the underlying PDE. While one-step predictions are accurate, repeated autoregressive application leads to a non-monotone error profile. 
+
+Overall, the experiments illustrate a clear distinction between classical numerical schemes, which have analytically characterised stability properties, and learned methods, which may reproduce local dynamics but lack guaranteed long-term stability.
+
+\end{document}
